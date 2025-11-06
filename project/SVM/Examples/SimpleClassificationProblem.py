@@ -1,22 +1,25 @@
 import numpy as np
 import sys
+import os
 sys.path.insert(0,"2526_INFOB318_Kernax/project/SVM")
 import jax
 import jax.numpy as jnp
 from jax import jit
 import matplotlib
+from matlab import sum
+from scipy.spatial.distance import cdist
 matplotlib.use('svg')
 import matplotlib.pyplot as plt
 from sklearn import svm
 from matplotlib import cm
-from Kernax import LinearKernel
+from Kernax import LinearKernel, RBFKernel
 import time
 
 # Still need to convert in jax
 # Suppose there is a circle with center at (0, 0) and radius 1.2.
 # All the points within the circle are labeled 1.
 # All the points outside the circle are labeled 0.
-nSamples = 10
+nSamples = 100
 spanLen = 2
 X = np.zeros((nSamples, 2))
 y = np.zeros((nSamples, ))
@@ -24,7 +27,6 @@ c = 0
 # Generation of our dataset, each point can either have 1 or 0 as his class.
 for i in range(nSamples):
  
-
   a, b = [np.random.uniform(-spanLen, spanLen) for _ in ['x', 'y']]
 
   X[i][0], X[i][1] = a, b
@@ -33,21 +35,21 @@ for i in range(nSamples):
   
 
 
-def my_kerneltest(A, B):
- gram = np.zeros((A.shape[0], B.shape[0]))
- for i in range(A.shape[0]):
-    for j in range(B.shape[0]):
-      assert A.shape[1] == B.shape[1]
-      L2A, L2B = 0.0, 0.0
-      for k in range(A.shape[1]):
-        gram[i, j] += A[i, k] * B[j, k]
-        L2A += A[i, k] * A[i, k]
-        L2B += B[j, k] * B[j, k]
-      gram[i, j] += L2A * L2B 
- return gram
+#def my_kerneltest(A, B):
+# gram = np.zeros((A.shape[0], B.shape[0]))
+# for i in range(A.shape[0]):
+ #   for j in range(B.shape[0]):
+ #     assert A.shape[1] == B.shape[1]
+  #    L2A, L2B = 0.0, 0.0
+   #   for k in range(A.shape[1]):
+   #     gram[i, j] += A[i, k] * B[j, k]
+   #     L2A += A[i, k] * A[i, k]
+    #    L2B += B[j, k] * B[j, k]
+    #  gram[i, j] += L2A * L2B 
+ #return gram
 
 # SVM train.
-my_kernel = LinearKernel(variance_b=0.5, variance_v=1.5, offset_c=1.0)
+my_kernel = RBFKernel(length_scale = 2.0,variance=1.0)
 print(my_kernel(X,X))
 
 
@@ -61,7 +63,7 @@ sup = clf.support_
 b = clf.intercept_
 x_min, x_max = -spanLen, spanLen
 y_min, y_max = -spanLen, spanLen
-xx, yy = jnp.meshgrid(np.arange(x_min, x_max, .2), np.arange(y_min, y_max, .2))
+xx, yy = jnp.meshgrid(np.arange(x_min, x_max, .02), np.arange(y_min, y_max, .02))
 Z = clf.predict(np.c_[xx.ravel(), yy.ravel()])
 Z = Z.reshape(xx.shape)
 print("youhouuu on est arrivés ici")
@@ -82,12 +84,22 @@ for this_y, color in zip(y_unique, colors):
 print("youhouuu on est arrivés ici jsute avant conversion 3D")
 # Process the training data into 3D by applying the kernel mapping:
 # phi(x, y) = (x, y, x*x + y*y).
+# It's only for illustration, to prove that my kernel function effectively permits
+
+#Ok donc les arrayx en jax sont immutables donc faut que je trouve une solution pour le modif
+#Maybe faut use vmap
 X3d = np.ndarray((X.shape[0], 3))
 for i in range(X.shape[0]):
     a, b = X[i][0], X[i][1]
-    X3d[i, 0], X3d[i, 1], X3d[i, 2] = [a, b, a*a + b*b]
+    #gamma = 2
+    # D = cdist(X,X)
+    # unnormalized_gaussian = jnp.exp(-(D**2) / ( 2*gamma**2))
+    #z = sum(unnormalized_gaussian)
+    X3d[i, 0], X3d[i, 1], X3d[i, 2] = [a, b, a*a + b*b ]
+
+
 print("youhouuu on est arrivés ici")
-# Plot the 3D layout after applying the kernel mapping.
+# 3D after applying the kernel mapping.
 from mpl_toolkits.mplot3d import Axes3D
 plt2 = plt.subplot(122, projection="3d")
 plt2.set_xlim([-spanLen, spanLen])
@@ -114,24 +126,34 @@ def onBoundary(x, y, z, X3d, coef, sup, b):
   return False
 print("youhouuu on est arrivés ici juste apès boundary")
 
-Xr = np.arange(x_min, x_max, .2)
-Yr = np.arange(y_min, y_max, .2)
+Xr = np.arange(x_min, x_max, .02)
+Yr = np.arange(y_min, y_max, .02)
 print(Xr)
 print(Yr)
+print(Xr.shape[0])
+print(Yr.shape[0])
 Z = np.zeros(Z.shape)
+A = 0
 for i in range(Xr.shape[0]):
+  print(A)
+  A = A + 1
   x = Xr[i]
   for j in range(Yr.shape[0]):
     y = Yr[j]
-    for z in np.arange(0, 2, .2):
+    for z in np.arange(0, 2, .02):
       if onBoundary(x, y, z, X3d, coef, sup, b):
         Z[i, j] = z
         break
-print("juste avant la fin")      
 plt2.plot_surface(xx, yy, Z, cmap='summer', alpha=0.2)
 
-plt.savefig("kerneltrick.svg", format = "svg")
+
+my_path = os.path.dirname(os.path.abspath("SimpleClassificationProblem")) 
+my_file = 'kerneltrick.svg'
+kernel_trick = os.path.join(my_path, my_file)
+print(kernel_trick)
+plt.savefig(kernel_trick, format = "svg")
 # Important to note that this example is only an ILLUSTRATION of what the kernel trick looks like,
 # The kernel trick principle doesn't need to transform explicitly transform our dataset into a higher dimension
 # As kernels already do in implicitly by considering each dot product of each point converted into our
 # Higher dimensional space, according to the kernel used.
+# The exemple is litteraly impossible to implement to 3d, only using known kernels of kernax and not twisting them.

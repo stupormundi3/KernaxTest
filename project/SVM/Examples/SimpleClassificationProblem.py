@@ -51,9 +51,9 @@ for i in range(nSamples):
 # SVM train.
 my_kernel = RBFKernel(length_scale = 2.0,variance=1.0)
 print(my_kernel(X,X))
+    
 
-
-
+    
 clf = svm.SVC(kernel = my_kernel)
 print("youhouuu on est arrivés ici")
 clf.fit(X, y)

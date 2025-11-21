@@ -1,5 +1,7 @@
 import numpy as np
-
+from jax import jit
+#Toutes les fonctions sont Jitables directement normalement, seul doute sur fit mais vu que les arguments sont fixés 
+#Le compiler XLA devrait bien pouvoir la traiter sans que je doive utiliser des partials arguments
 
 class SVM:
 
@@ -21,7 +23,7 @@ class SVM:
             # calculating loss
             loss = reg + self.C * max(0, 1-opt_term)
         return loss[0][0]
-
+    @jit
     def fit(self, X, Y, batch_size=100, learning_rate=0.001, epochs=1000):
         # The number of features in X
         number_of_features = X.shape[1]

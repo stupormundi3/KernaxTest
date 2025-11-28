@@ -1,6 +1,9 @@
 import jax.numpy as np
+import sys
+sys.path.insert(0,"2526_INFOB318_Kernax/project/SVM")
 from jax import jit
 from functools import partial
+from Kernax import LinearKernel, RBFKernel
 import jax
 #Toutes les fonctions sont Jitables directement normalement, seul doute sur fit mais vu que les arguments sont fixés 
 #Le compiler XLA devrait bien pouvoir la traiter sans que je doive utiliser des partials arguments
@@ -12,7 +15,14 @@ class SVM:
         self.C = C
         self.w = 0
         self.b = 0
+        self.kernel = None
+        self.X_train = None  
 
+
+
+
+
+    
     # Hinge Loss Function / Calculation
     @partial(jit, static_argnums=(0,))
     def hingeloss(self, w, b, x, y):
@@ -28,18 +38,24 @@ class SVM:
    
             loss = reg + self.C * np.maximum(0, 1-opt_term)
         return loss[0][0]
-    
-    @partial(jit, static_argnums=(0,))
+
     def fit(self, X, Y, batch_size=100, learning_rate=0.001, epochs=1000):
         # The number of features in X
+        self.X_train = X.copy()
+
+
+    
+
+        if(self.kernel == "rbf"):
+            X = RBFKernel(length_scale = 2.0,variance=1.0)(X,X)
+            print(X)
+            print(type(X))
         number_of_features = X.shape[1]
 
         # The number of Samples in X
         number_of_samples = X.shape[0]
 
         c = self.C
-        #used to compare the tracer object float 32(which contains one element) with 1
-        comparator = np.array([1])
 
         # Creating ids from 0 to number_of_samples - 1
         ids = np.arange(number_of_samples)
@@ -69,22 +85,34 @@ class SVM:
                     if j < number_of_samples:
                         x = ids[j]
                         ti = Y[x] * (np.dot(w, X[x].T) + b)
-                        type(ti)
-                        
-                       #Je veux convertir mon jit tracer float initial en un singleton booléen,
-                       #Pour pouvoir utiliser any, dans ma jax cond et donc pouvoir imiter ce comportement
-                        testing = np.greater(ti,comparator)
 
-                        
-                        print(c * Y[x] * X[x])
-                        gradw += jax.lax.cond(np.any(testing), lambda _ : c * Y[x] * X[x], lambda _: [[0.0],[0.0]], None)
-                        gradb += jax.lax.cond(np.any(testing), lambda _ : c * Y[x] * X[x], lambda _: [[0.0],[0.0]], None) 
+                        if ti > 1:
+                            gradw += 0
+                            gradb += 0
+                           
+                        else:
+                            # Calculating the gradients
+
+                            #w.r.t w 
+                            gradw += c * Y[x] * X[x]
+                            # w.r.t b
+                            gradb += c * Y[x]
+                       
+                #Je n'ai pas réussi à jit la fonction parce que je ne vois pas comment je peux avoir deux types de retours diff
+                  #Je veux convertir mon jit tracer float initial en un singleton booléen,
+                       #Pour pouvoir utiliser any, dans ma jax cond et donc pouvoir imiter ce comportement
+                        #testing = np.greater(ti,comparator)
+                        #gradw += jax.lax.cond(np.any(testing), lambda _ : c * Y[x] * X[x], lambda _: 0.0, None)
+                        #gradb += jax.lax.cond(np.any(testing), lambda _ : c * Y[x] * X[x], lambda _: 0.0, None) 
                         # here there might be a trick to do, to not modify gradw && gradb when ti > 1
-                        # else initial 
-    
+                        # else on fait initial 
+
+
+
                 # Updating weights and bias
                 w = w - learning_rate * w + learning_rate * gradw
                 b = b + learning_rate * gradb
+             
         
         self.w = w
         self.b = b
@@ -93,6 +121,10 @@ class SVM:
     
     @partial(jit, static_argnums=(0,))
     def predict(self, X):
-        
+        if(self.kernel == 'rbf'):
+            X = RBFKernel(length_scale = 2.0,variance=1.0)(X, self.X_train)
+
+            
+
         prediction = np.dot(X, self.w[0]) + self.b # w.x + b
         return np.sign(prediction)

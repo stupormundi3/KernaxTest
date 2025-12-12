@@ -29,7 +29,7 @@ y = np.where(y == 0, -1, 1)
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.5, random_state=40)
 svm = SVM()
-svm.kernel = 'rbf'
+svm.kernel = 'SE'
 w, b, losses = svm.fit(X_train, y_train)
 prediction = svm.predict(X_test)
 
@@ -93,7 +93,7 @@ def visualize_poly_svm(svm, X_train, y_train, X_test, y_test):
     # labels etc
     plt.xlabel("Première caractéristique")
     plt.ylabel("Deuxième caractéristique")
-    plt.title(f"SVM avec noyau {svm.kernel}\nPrécision sur les tests: {accuracy:.3f}")
+    plt.title(f"SVM avec noyau {"Square Exponential"}\nPrécision sur les tests: {accuracy:.3f}")
     plt.legend()
     plt.colorbar(label='Classe prédite')
     

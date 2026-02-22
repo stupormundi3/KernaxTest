@@ -1,19 +1,27 @@
+from Kernax import RBFKernel  # ou tout autre kernel de votre bibliothèque
 import numpy as np
 import matplotlib.pyplot as plt
-X = np.linspace(start=0, stop=10, num=1_000).reshape(-1, 1)
+from GP import GPR
+# Génération des données
+X = np.linspace(0, 10, 1000).reshape(-1, 1)
 y = np.squeeze(X * np.sin(X))
 rng = np.random.RandomState(1)
 training_indices = rng.choice(np.arange(y.size), size=6, replace=False)
 X_train, y_train = X[training_indices], y[training_indices]
-from GP import GaussianProcessRegressor
-from sklearn.gaussian_process.kernels import RBF
 
-kernel = 1 * RBF(length_scale=1.0, length_scale_bounds=(1e-2, 1e2))
-gaussian_process = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=9)
-gaussian_process.fit(X_train, y_train)
-gaussian_process.kernel_
+# Création du kernel JAX
+kernel = RBFKernel(length_scale=1.0, variance=1.0)  # utilisation de votre classe
+
+# Création du modèle GPR
+gaussian_process = GPR(kernel=kernel, alpha=1e-5, normalize_y=True)
+
+# Entraînement
+gaussian_process.fit(X_train, y_train, num_iters=500, learning_rate=0.01, verbose=True)
+
+# Prédiction
 mean_prediction, std_prediction = gaussian_process.predict(X, return_std=True)
 
+# Tracé
 plt.plot(X, y, label=r"$f(x) = x \sin(x)$", linestyle="dotted")
 plt.scatter(X_train, y_train, label="Observations")
 plt.plot(X, mean_prediction, label="Mean prediction")
@@ -27,5 +35,5 @@ plt.fill_between(
 plt.legend()
 plt.xlabel("$x$")
 plt.ylabel("$f(x)$")
-_ = plt.title("Gaussian process regression on noise-free dataset")
+plt.title("Gaussian process regression with JAX")
 plt.show()

@@ -27,3 +27,4 @@ class RBFKernel(AbstractKernel):
 		super().__init__(length_scale=length_scale, variance=variance)
 
 		self.static_class = StaticRBFKernel
+    		

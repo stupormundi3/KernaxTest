@@ -161,6 +161,8 @@ class AbstractKernel:
 	def get_hp_vmap_in_axes(self, input_dim: int):
 		# Compute the vmap in_axes for the kernel based on the input dimension
 		return self.static_class.get_hp_vmap_in_axes(self, input_dim)
+	
+	
 
 	def has_distinct_hyperparameters(self, inputs_first_dim) -> bool:
 		"""

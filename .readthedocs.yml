@@ -9,7 +9,7 @@ build:
 
 # Configuration Sphinx
 sphinx:
-  configuration: docs/source/conf.py
+  configuration: project/docs/source/conf.py
 
 
 formats:

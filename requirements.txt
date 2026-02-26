@@ -2,4 +2,3 @@ sphinx
 sphinx-rtd-theme
 numpy
 scikit-learn
-sklearn

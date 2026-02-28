@@ -1,12 +1,12 @@
 Référence de l'API
 ==================
 
-.. automodule:: SVMtesting.models
+.. automodule:: Kernelification.ExamplesGP.Exemple
    :members:
    :undoc-members:
    :show-inheritance:
 
-.. automodule:: SWMtesting.utils
+.. automodule:: Kernelification.ExamplesGP.GP
    :members:
    :undoc-members:
    :show-inheritance:

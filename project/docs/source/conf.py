@@ -1,6 +1,7 @@
 
 import os
 import sys
+autodoc_mock_imports = ["jax", "jaxlib", "optax", "chex", "absl", "ml_dtypes"]
 racine_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 sys.path.insert(0, racine_path)
 

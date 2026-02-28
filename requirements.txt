@@ -2,6 +2,3 @@ sphinx
 sphinx-rtd-theme
 numpy
 scikit-learn
-jax
-optax
-jax[cpu]

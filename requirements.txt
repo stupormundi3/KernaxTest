@@ -4,4 +4,4 @@ numpy
 scikit-learn
 jax
 optax
-jaxlib
+jax[cpu]

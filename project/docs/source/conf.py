@@ -1,13 +1,9 @@
-# Configuration file for the Sphinx documentation builder.
-#
-# For the full list of built-in configuration values, see the documentation:
-# https://www.sphinx-doc.org/en/master/usage/configuration.html
 
-# -- Project information -----------------------------------------------------
-# https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 import os
 import sys
-sys.path.insert(0, os.path.abspath('../../'))
+racine_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+kernel_path = os.path.join(racine_path, 'Kernelification')
+sys.path.insert(0, kernel_path)
 
 napoleon_google_docstring = True
 napoleon_numpy_docstring = False
@@ -17,8 +13,7 @@ copyright = '2026, Ziad Iziz'
 author = 'Ziad Iziz'
 release = '2026'
 
-# -- General configuration ---------------------------------------------------
-# https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
+
 
 extensions = [
     'sphinx.ext.autodoc',   
@@ -31,8 +26,6 @@ exclude_patterns = []
 
 
 
-# -- Options for HTML output -------------------------------------------------
-# https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
 html_theme = 'sphinx_rtd_theme'
 html_static_path = ['_static']

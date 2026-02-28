@@ -2,8 +2,7 @@
 import os
 import sys
 racine_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-kernel_path = os.path.join(racine_path, 'Kernelification')
-sys.path.insert(0, kernel_path)
+sys.path.insert(0, racine_path)
 
 napoleon_google_docstring = True
 napoleon_numpy_docstring = False

@@ -9,5 +9,9 @@ Welcome to Kernax
 
    installation
    api_reference
+   notebooks/GP
+   notebooks/Kernels
+   notebooks/Visualization
+   visualisation
 
 

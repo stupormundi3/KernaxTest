@@ -7,7 +7,7 @@ build:
   tools:
     python: "3.8"
 
-# Configuration Sphinx
+
 sphinx:
   configuration: project/docs/source/conf.py
 

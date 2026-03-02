@@ -22,6 +22,8 @@ extensions = [
     'sphinx_togglebutton',
     'nbsphinx'
 ]
+nbsphinx_execute = 'never'
+
 
 templates_path = ['_templates']
 exclude_patterns = []

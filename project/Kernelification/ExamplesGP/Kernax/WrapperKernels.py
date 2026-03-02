@@ -5,8 +5,7 @@ from jax.lax import cond
 
 from functools import partial
 
-from Kernax import StaticAbstractKernel, AbstractKernel, ConstantKernel
-
+from .AbstractKernel import StaticAbstractKernel, AbstractKernel
 
 @register_pytree_node_class
 class WrapperKernel(AbstractKernel):

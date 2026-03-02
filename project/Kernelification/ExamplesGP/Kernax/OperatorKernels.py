@@ -2,8 +2,7 @@ import jax.numpy as jnp
 from jax import jit
 from jax.tree_util import register_pytree_node_class
 
-from Kernax import AbstractKernel, ConstantKernel
-
+from .AbstractKernel import StaticAbstractKernel, AbstractKernel
 
 @register_pytree_node_class
 class OperatorKernel(AbstractKernel):

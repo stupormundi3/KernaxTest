@@ -6,143 +6,151 @@ import optax
 from functools import partial
 
 @register_pytree_node_class
-class GPR:
-    def __init__(self, kernel, alpha=1e-10, normalize_y=False):
-        self.kernel = kernel
-        self.alpha = alpha
-        self.normalize_y = normalize_y
-        self.X_train_ = None
-        self.y_train_ = None
+class GP:
+    def __init__(self, Kernel, Alpha=1e-10, NormalizeObs=False):
+        self.Kernel = Kernel
+        self.Alpha = Alpha
+        self.NormalizeObs = NormalizeObs
+        self.TrainingData = None
+        self.Obs = None
         self.L_ = None
-        self.alpha_ = None
-        self._y_mean = None
-        self._y_std = None
+        self.Alpha_ = None
+        self.ObsMean = None
+        self.ObsSTD = None
 
+
+    #Tree flattening static instances as aux_data and dynamic as children
     def tree_flatten(self):
-        children = (self.X_train_, self.y_train_, self.L_, self.alpha_,
-                    self._y_mean, self._y_std, self.kernel)
-        aux_data = {'alpha': self.alpha, 'normalize_y': self.normalize_y}
+        children = (self.TrainingData, self.Obs, self.L_, self.Alpha_,
+                    self.ObsMean, self.ObsSTD, self.Kernel)
+        aux_data = {'Alpha': self.Alpha, 'NormalizeObs': self.NormalizeObs}
         return (children, aux_data)
+    
 
+    #Unflatenning to have a pytree(mostly for JAX operations)
     @classmethod
     def tree_unflatten(cls, aux_data, children):
         obj = cls.__new__(cls)
         obj.__dict__.update(aux_data)
-        (obj.X_train_, obj.y_train_, obj.L_, obj.alpha_,
-         obj._y_mean, obj._y_std, obj.kernel) = children
+        (obj.TrainingData, obj.Obs, obj.L_, obj.Alpha_,
+         obj.ObsMean, obj.ObsSTD, obj.Kernel) = children
         return obj
 
     @staticmethod
-    def marginal_log_likelihood(kernel, X, y, alpha):
+    #Marginal log likelihood that we will to maximize, to find the best hyperparameters values for our Kernels
+    def marginal_log_likelihood(Kernel, X, Obs, Alpha):
         n = X.shape[0]
-        K = kernel(X)                        # matrice de Gram
-        K = K + alpha * jnp.eye(n)            # ajout du bruit
-        L = jnp.linalg.cholesky(K)            # factorisation de Cholesky
-        # Résolution de L @ L.T @ alpha_ = y
-        alpha_ = jax.scipy.linalg.cho_solve((L, True), y)
-        # Log‑vraisemblance : -0.5 yᵀ α - ∑ log(L_ii) - n/2 log(2π)
-        log_lik = -0.5 * jnp.dot(y.T, alpha_).squeeze() - jnp.sum(jnp.log(jnp.diag(L))) - 0.5 * n * jnp.log(2 * jnp.pi)
+        K = Kernel(X)                      
+        K = K + Alpha * jnp.eye(n)            
+        L = jnp.linalg.cholesky(K)            
+        #Resolution of L @ L.T @ Alpha_ = y
+        Alpha_ = jax.scipy.linalg.cho_solve((L, True), Obs)
+        #Log‑likelihood
+        log_lik = -0.5 * jnp.sum(Obs * Alpha_) - jnp.sum(jnp.log(jnp.diag(L))) - 0.5 * n * jnp.log(2 * jnp.pi)
         return log_lik
 
-    def fit(self, X, y, num_iters=1000, learning_rate=0.01, verbose=False):
-        # Convertir en JAX arrays
+    def fit(self, X, Obs, num_iters=1000, learning_rate=0.01, progress=False):
+      
         X = jnp.asarray(X)
-        y = jnp.asarray(y)
-        if y.ndim == 1:
-            y = y[:, None]  # mettre sous forme (n,1)
+        Obs = jnp.asarray(Obs)
+        if Obs.ndim == 1:
+            Obs = Obs[:, None]  #Converting to (n,1) if needed
 
-        # Normalisation si demandée
-        if self.normalize_y:
-            y_mean = jnp.mean(y, axis=0)
-            y_std = jnp.std(y, axis=0)
-            y_std = jnp.where(y_std == 0, 1.0, y_std)
-            y_norm = (y - y_mean) / y_std
+        #Normalizing the data if needed, we make the hypothesis that the mean is null
+        #, but if the mean isn't then we need to normalize the Obs
+
+        if self.NormalizeObs:
+            Obs_mean = jnp.mean(Obs, axis=0)
+            Obs_std = jnp.std(Obs, axis=0)
+            Obs_std = jnp.where(Obs_std == 0, 1.0, Obs_std)
+            Obs_norm = (Obs - Obs_mean) / Obs_std
         else:
-            y_mean = jnp.zeros(y.shape[1:])
-            y_std = jnp.ones_like(y_mean)
-            y_norm = y
+            Obs_mean = jnp.zeros(Obs.shape[1:])
+            Obs_std = jnp.ones_like(Obs_mean)
+            Obs_norm = Obs
 
-        # Fonction de perte (négative log‑vraisemblance) en fonction du kernel
-        def loss_fn(kernel):
-            return -self.marginal_log_likelihood(kernel, X, y_norm, self.alpha)
+        #Simple loss function (log likelihood that we will minimize)
+        def loss_fn(Kernel):
+            return -self.marginal_log_likelihood(Kernel, X, Obs_norm, self.Alpha)
 
-        # Initialiser l'optimiseur Adam
+        
         optimizer = optax.adam(learning_rate)
-        opt_state = optimizer.init(self.kernel)
+        opt_state = optimizer.init(self.Kernel)
 
-        # Étape d'optimisation jittée
+        #Classical optimization of the hyperparameters of the kernel
         @jit
-        def step(kernel, opt_state):
-            loss, grads = value_and_grad(loss_fn)(kernel)
-            updates, opt_state = optimizer.update(grads, opt_state, kernel)
-            kernel = optax.apply_updates(kernel, updates)
-            return kernel, opt_state, loss
+        def step(Kernel, opt_state):
+            loss, grads = value_and_grad(loss_fn)(Kernel)
+            updates, opt_state = optimizer.update(grads, opt_state, Kernel)
+            Kernel = optax.apply_updates(Kernel, updates)
+            return Kernel, opt_state, loss
 
-        # Boucle d'optimisation
-        kernel = self.kernel
+        #Optimization loop that give us losses
+        Kernel = self.Kernel
         for i in range(num_iters):
-            kernel, opt_state, loss = step(kernel, opt_state)
-            if verbose and i % 100 == 0:
+            Kernel, opt_state, loss = step(Kernel, opt_state)
+            if progress and i % 100 == 0:
                 print(f"Iter {i}, loss = {loss:.4f}")
 
-        # Mise à jour du kernel optimisé
-        self.kernel = kernel
+        #Update of the kernel optimized(the hyparmaters)
+        self.Kernel = Kernel
 
-        # Calcul des quantités postérieures avec le kernel optimisé
-        K = self.kernel(X)
-        K = K + self.alpha * jnp.eye(len(X))
+        #Calculating the new values with optimized paramaters
+        K = self.Kernel(X)
+        K = K + self.Alpha * jnp.eye(len(X))
         L = jnp.linalg.cholesky(K)
-        alpha_ = jax.scipy.linalg.cho_solve((L, True), y_norm)
+        Alpha_ = jax.scipy.linalg.cho_solve((L, True), Obs_norm)
 
-        # Mettre à jour l'état
-        self.X_train_ = X
-        self.y_train_ = y_norm
+        #Updating the state
+        self.TrainingData = X
+        self.Obs = Obs_norm
         self.L_ = L
-        self.alpha_ = alpha_
-        self._y_mean = y_mean
-        self._y_std = y_std
+        self.Alpha_ = Alpha_
+        self.ObsMean = Obs_mean
+        self.ObsSTD = Obs_std
 
         return self
 
-    @partial(jit, static_argnames=['return_std', 'return_cov'])
-    def predict(self, X, return_std=False, return_cov=False):
+    @partial(jit, static_argnames=['Return_std', 'Return_cov'])
+    def predict(self, X, Return_std=False, Return_cov=False):
      X = jnp.asarray(X)
 
-     # Fonction pour calculer la diagonale (variance a priori) par point
-     diag_fn = jax.vmap(lambda x: self.kernel(x, x))
+     #Calculation of the diagonal(variance for each test random variable)
+     Diag_fn = jax.vmap(lambda x: self.Kernel(x, x))
 
-     if self.X_train_ is None:
-        # Modèle non entraîné : prior
-        n_targets = 1 if self._y_mean is None else self._y_mean.shape[0]
-        y_mean = jnp.zeros((X.shape[0], n_targets)).squeeze()
-        if return_cov:
-            y_cov = self.kernel(X)
-            return y_mean, y_cov
-        elif return_std:
-            y_var = diag_fn(X)   # <-- remplace self.kernel.diag(X)
-            return y_mean, jnp.sqrt(y_var)
+     if self.TrainingData is None:
+        #If the model wasn't trained we calculate the prior(basically it's just applying,
+        # The kernel for each pair of test points)
+        n_targets = 1 if self.ObsMean is None else self.ObsMean.shape[0]
+        Obs_mean = jnp.zeros((X.shape[0], n_targets)).squeeze()
+        if Return_cov:
+            Obs_cov = self.Kernel(X)
+            return Obs_mean, Obs_cov
+        elif Return_std:
+            Obs_var = Diag_fn(X)   
+            return Obs_mean, jnp.sqrt(Obs_var)
         else:
-            return y_mean
+            return Obs_mean
      else:
-        # Modèle entraîné
-        K_trans = self.kernel(X, self.X_train_)
-        y_mean = K_trans @ self.alpha_
-        y_mean = self._y_std * y_mean + self._y_mean
-        if y_mean.ndim > 1 and y_mean.shape[1] == 1:
-            y_mean = y_mean.squeeze(1)
+        # If the model is trained then we apply the formulas to find the new distributions
+        # so basically we want to find the updated mean and cov matrix
+        K_trans = self.Kernel(X, self.TrainingData)
+        Obs_mean = K_trans @ self.Alpha_
+        Obs_mean = self.ObsSTD * Obs_mean + self.ObsMean
+        if Obs_mean.ndim > 1 and Obs_mean.shape[1] == 1:
+            Obs_mean = Obs_mean.squeeze(1)
 
-        if return_cov:
+        if Return_cov:
             v = jax.scipy.linalg.solve_triangular(self.L_, K_trans.T, lower=True)
-            y_cov = self.kernel(X) - v.T @ v
-            y_cov = jnp.outer(y_cov, self._y_std**2).reshape(*y_cov.shape, -1)
-            if y_cov.shape[-1] == 1:
-                y_cov = y_cov.squeeze(-1)
-            return y_mean, y_cov
-        elif return_std:
+            Obs_cov = self.Kernel(X) - v.T @ v
+            Obs_cov = jnp.outer(Obs_cov, self.ObsSTD**2).reshape(*Obs_cov.shape, -1)
+            if Obs_cov.shape[-1] == 1:
+                Obs_cov = Obs_cov.squeeze(-1)
+            return Obs_mean, Obs_cov
+        elif Return_std:
             v = jax.scipy.linalg.solve_triangular(self.L_, K_trans.T, lower=True)
-            # Utilisation de diag_fn pour la diagonale
-            y_var = diag_fn(X) - jnp.einsum('ij,ji->i', v.T, v)
-            y_var = y_var * self._y_std**2
-            return y_mean, jnp.sqrt(y_var)
+            Obs_var = Diag_fn(X) - jnp.einsum('ij,ji->i', v.T, v)
+            Obs_var = Obs_var * self.ObsSTD**2
+            return Obs_mean, jnp.sqrt(Obs_var)
         else:
-            return y_mean
+            return Obs_mean

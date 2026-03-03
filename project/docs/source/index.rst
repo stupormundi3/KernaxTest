@@ -12,6 +12,6 @@ Welcome to Kernax
    notebooks/GP
    notebooks/Kernels
    notebooks/Visualization
-   visualization
+   visualisation
 
 

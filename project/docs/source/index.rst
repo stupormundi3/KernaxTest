@@ -1,4 +1,4 @@
-.. Mon Projet SVM documentation master file.
+
 
 Welcome to Kernax
 =================================================

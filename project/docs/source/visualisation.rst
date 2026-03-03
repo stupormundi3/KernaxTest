@@ -1,2 +1,2 @@
 .. toctree::
-   ../../Kernelification/ExamplesGP/Notebooks/Visualization
+   notebooks/Visualization

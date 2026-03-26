@@ -7,134 +7,135 @@ from jax import jit, grad, value_and_grad
 from jax.tree_util import register_pytree_node_class
 import optax
 from functools import partial
+import jax
 
 @register_pytree_node_class
-class GaussProcess:
+class KRR:
     
     
 
-    def __init__(self,X, Kernel=None, y=None, 
-                  RidgeCoeff = 1e-10, **kwds ):
+    def __init__(self,X, Kernel=None,
+                  RidgeCoeff = 1e-10, NormalizeObs=False, **kwds  ):
     
         #ok donc jv devoir calculer les coefficients duaux, et j'ai juste besoin de la mat 
         # de gram et l'inverse, jpeux direct faire cholesky ici, à voir
+        #Je calcule pas les coefficients duaux ici prcq ça aurait aucun sens étant donné que je peux normaliser
+        # mes cibles si besoin
         if Kernel is None:
             self.Kernel=Matern32Kernel(length_scale=1.0)   
         else:
             self.Kernel = Kernel    
         self.TrainingData = jnp.asarray(X)
         self.RidgeCoeff = RidgeCoeff
-        self.GramMatrix = self.Kernel(self.TrainingData,self.TrainingData)
-        self.Kinv = jnp.linalg.inv(self.GramMatrix +
-                             jnp.eye(*self.GramMatrix.shape)*RidgeCoeff)
-        if y is not None:
-            self.y = y
-            self.yest = self.fit(y)
+        self.ObsMean = None
+        self.ObsSTD = None
+        self.DualCoefficients = None    
+        self.NormalizeObs = NormalizeObs
+
 
     #This method use, is to transform my classes objects
     #into pytree, as jax need the 'self' arg to be a pytree to jit it 
 
     def tree_flatten(self):
-        children = (self.TrainingData, self.Kernel, self.GramMatrix, self.Kinv,
-                    self.y)
-        aux_data = {'RidgeCoeff': self.RidgeCoeff, }
+        children = (self.TrainingData, self.Kernel)
+        aux_data = {'RidgeCoeff': self.RidgeCoeff, 'NormalizeObs' : self.NormalizeObs}
         return (children, aux_data)
     
  
+    #Unflatenning to have a pytree(mostly for JAX operations)
+    @classmethod
+    def tree_unflatten(cls, aux_data, children):
+        obj = cls.__new__(cls)
+        obj.__dict__.update(aux_data)
+        (obj.TrainingData, obj.Kernel) = children
+        return obj
 
-    def fit(self,y):
+    @staticmethod
+    #Marginal log likelihood that we will to maximize, to find the best hyperparameters values for our Kernels
+    def marginal_log_likelihood(Kernel, X, Obs, RidgeCoeff):
+        n = X.shape[0]
+        K = Kernel(X)                      
+        K = K + RidgeCoeff * jnp.eye(n)            
+        L = jnp.linalg.cholesky(K)            
+        #Resolution of the equation involving choleksy to find the dual coefficients
+        Alpha_ = jax.scipy.linalg.cho_solve((L, True), Obs)
+        #Loglikelihood
+        log_lik = -0.5 * jnp.sum(Obs * Alpha_) - jnp.sum(jnp.log(jnp.diag(L))) - 0.5 * n * jnp.log(2 * jnp.pi)
+        return log_lik
+    
+
+    def fit(self, y, num_iters=1000, learning_rate=0.1, progress=False):
         ''' Fitting the images associated with our training data'''
-        self.DualCoefficients = jnp.dot(self.Kinv, y)
-        TrainingDataFitted = jnp.dot(self.GramMatrix,self.DualCoefficients)
-        return TrainingDataFitted
+        Obs = jnp.asarray(y)
+    
+
+        if Obs.ndim==1:
+            Obs = Obs[:, None]
+
+        if self.NormalizeObs:
+            ObsMean = jnp.mean(Obs, axis=0)
+            ObsSTD = jnp.std(Obs, axis=0)
+            ObsSTD = jnp.where(ObsSTD == 0, 1.0,ObsSTD)
+            ObsNorm = (Obs -ObsMean) /ObsSTD
+        else:
+           #The means and STD are calculated even if I don't normalize
+           #So in predict I don't have to distingush
+           #the normalized and unormalized cases
+           ObsMean = jnp.zeros(Obs.shape[1:])
+           ObsSTD = jnp.ones_like(ObsMean)
+           ObsNorm = Obs
+         #Simple loss function (log likelihood that we will minimize)
+        def loss_fn(Kernel):
+            return -self.marginal_log_likelihood(Kernel, self.TrainingData, ObsNorm, self.RidgeCoeff)
+
+        
+        optimizer = optax.adam(learning_rate)
+        opt_state = optimizer.init(self.Kernel)
+
+        #Classical optimization of the hyperparameters of the kernel
+        @jit
+        def step(Kernel, opt_state):
+            loss, grads = value_and_grad(loss_fn)(Kernel)
+            updates, opt_state = optimizer.update(grads, opt_state, Kernel)
+            Kernel = optax.apply_updates(Kernel, updates)
+            return Kernel, opt_state, loss
+
+        #Optimization loop that give us losses
+        Kernel = self.Kernel
+        for i in range(num_iters):
+            Kernel, opt_state, loss = step(Kernel, opt_state)
+            if progress and i % 100 == 0:
+                print(f"Iter {i}, loss = {loss:.4f}")
+
+        #Update of the kernel optimized(the hyparmaters)
+        self.Kernel = Kernel
+
+        #Calculating the new values with optimized parameters
+        K = self.Kernel(self.TrainingData,self.TrainingData)
+        K = K + self.RidgeCoeff * jnp.eye(len(self.TrainingData))
+        L = jnp.linalg.cholesky(K)
+        DualCoefficients = jax.scipy.linalg.cho_solve((L, True), ObsNorm)
+        
+        self.ObsMean = ObsMean
+        self.ObsSTD = ObsSTD
+        self.DualCoefficients = DualCoefficients
+        
+        #We calculate the gram matrix after optimization of the hyperparameters
+        GramMatrix = self.Kernel(self.TrainingData,self.TrainingData)    
+        self.NormalizeObs = jnp.dot(GramMatrix,self.DualCoefficients)
+        return self
 
 
     def predict(self,x):
-        '''Prediction of y for feature space points'''
+        '''Prediction of y for feature space points
+        
+        '''
         x = jnp.asarray(x)
         distxpredict = self.Kernel(x, self.TrainingData)
-        return jnp.dot(distxpredict, self.DualCoefficients)
-
-    def plot(self, y, plt=plt ):
-        '''some basic plots'''
-        #todo return proper graph handles
-        plt.figure()
-        plt.plot(self.x,self.y, 'bo-', self.x, self.yest, 'r.-')
-        plt.title('sample (training) points')
-        plt.figure()
-        plt.plot(self.xpredict,y,'bo-',self.xpredict,self.ypredict,'r.-')
-        plt.title('all points')
+        yPredictionNorm = jnp.dot(distxpredict, self.DualCoefficients)
+        yPredictionUnnorm = yPredictionNorm * self.ObsSTD + self.ObsMean
+        return yPredictionUnnorm
 
 
 
-def example1():
-    m,k = 500,4
-    upper = 6
-    xs1a = jnp.linspace(1,upper,m)[:,jnp.newaxis]
-    xs1 = xs1a*jnp.ones((1,4)) + 1/(1.0+jnp.exp(np.random.randn(m,k)))
-    xs1 /= jnp.std(xs1[::k,:],0)   # normalize scale, could use cov to normalize
-    y1true = jnp.sum(jnp.sin(xs1)+jnp.sqrt(xs1),1)[:,jnp.newaxis]
-    y1 = y1true + 0.250 * np.random.randn(m,1)
 
-    stride = 2 #use only some points as trainig points e.g 2 means every 2nd
-    gp1 = GaussProcess(xs1[::stride,:],y=y1[::stride,:], 
-                       RidgeCoeff=1e-10)
-    TrainingDataFittedr1 = gp1.predict(xs1)
-    plt.figure()
-    plt.plot(y1true, y1,'bo',y1true, TrainingDataFittedr1,'r.')
-    plt.title('euclid kernel: true y versus noisy y and estimated y')
-    plt.figure()
-    plt.plot(y1,'bo-',y1true,'go-',TrainingDataFittedr1,'r.-')
-    plt.title('euclid kernel: true (green), noisy (blue) and estimated (red) '+
-              'observations')
-
-    gp2 = GaussProcess(xs1[::stride,:],y=y1[::stride,:],
-                       RidgeCoeff=1e-1)
-    TrainingDataFittedr2 = gp2.predict(xs1)
-    plt.figure()
-    plt.plot(y1true, y1,'bo',y1true, TrainingDataFittedr2,'r.')
-    plt.title('rbf kernel: true versus noisy (blue) and estimated (red) observations')
-    plt.figure()
-    plt.plot(y1,'bo-',y1true,'go-',TrainingDataFittedr2,'r.-')
-    plt.title('rbf kernel: true (green), noisy (blue) and estimated (red) '+
-              'observations')
-    #gp2.plot(y1)
-
-
-def example2(m=100, stride=2):
-    #m,k = 100,1
-    upper = 6
-    xs1 = jnp.linspace(1,upper,m)[:,jnp.newaxis]
-    y1true = jnp.sum(jnp.sin(xs1**2),1)[:,jnp.newaxis]/xs1
-    y1 = y1true + 0.05*np.random.randn(m,1)
-
-    RidgeCoeff = 1e-10
-    #stride = 2 #use only some points as trainig points e.g 2 means every 2nd
-    gp1 = GaussProcess(xs1[::stride,:],None, y=y1[::stride,:],
-                       RidgeCoeff=1e-10)
-    TrainingDataFittedr1 = gp1.predict(xs1)
-    plt.figure()
-    plt.plot(y1true, y1,'bo',y1true, TrainingDataFittedr1,'r.')
-    plt.title('euclid kernel: true versus noisy (blue) and estimated (red) observations')
-    plt.figure()
-    plt.plot(y1,'bo-',y1true,'go-',TrainingDataFittedr1,'r.-')
-    plt.title('euclid kernel: true (green), noisy (blue) and estimated (red) '+
-              'observations')
-
-    gp2 = GaussProcess(xs1[::stride,:],y=y1[::stride,:], 
-                       RidgeCoeff=1e-2)
-    TrainingDataFittedr2 = gp2.predict(xs1)
-    plt.figure()
-    plt.plot(y1true, y1,'bo',y1true, TrainingDataFittedr2,'r.')
-    plt.title('rbf kernel: true versus noisy (blue) and estimated (red) observations')
-    plt.figure()
-    plt.plot(y1,'bo-',y1true,'go-',TrainingDataFittedr2,'r.-')
-    plt.title('rbf kernel: true (green), noisy (blue) and estimated (red) '+
-              'observations')
-    #gp2.plot(y1)
-
-if __name__ == '__main__':
-    plt.close('all')
-    example2()
-    example1()
-    plt.show()

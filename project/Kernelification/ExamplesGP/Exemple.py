@@ -1,9 +1,9 @@
 
 if __name__ == "__main__":
- from .Kernax import RBFKernel, Matern32Kernel  
+ from kernax import Matern32Kernel  
  import numpy as np
  import matplotlib.pyplot as plt
- from .GP import GP
+ from GP import GP
  #Generation of the data
  X = np.linspace(0, 10, 1000).reshape(-1, 1)
  y = np.squeeze(X * np.sin(X))

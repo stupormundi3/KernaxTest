@@ -12,6 +12,8 @@ Welcome to Kernax
    notebooks/GP
    notebooks/Kernels
    notebooks/Visualization
+   notebooks/KRRExamples
+   notebooks/KRR1
    visualisation
 
 

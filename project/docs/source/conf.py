@@ -23,7 +23,7 @@ extensions = [
     'nbsphinx'
 ]
 nbsphinx_execute = 'never'
-
+nbsphinx_collapsible = True
 
 templates_path = ['_templates']
 exclude_patterns = []

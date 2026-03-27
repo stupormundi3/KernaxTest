@@ -24,6 +24,7 @@ extensions = [
 ]
 nbsphinx_execute = 'never'
 nbsphinx_collapsible = True
+nbsphinx_allow_errors = True
 
 templates_path = ['_templates']
 exclude_patterns = []

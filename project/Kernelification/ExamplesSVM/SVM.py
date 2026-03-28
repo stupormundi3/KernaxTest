@@ -3,7 +3,7 @@ import sys
 sys.path.insert(0,"2526_INFOB318_Kernax/project/SVM")
 from jax import jit
 from functools import partial
-from Kernax import LinearKernel, SEMagmaKernel
+from kernax import LinearKernel, SEKernel
 import jax
 import optax
 #Toutes les fonctions sont Jitables directement normalement, seul doute sur fit mais vu que les arguments sont fixés 
@@ -83,10 +83,10 @@ class SVM:
     
         #As the dual problem and primal don't have have the same parameters, i need to optimize in two different ways
         if(self.kernel == "squarexpo"):
-            X = SEMagmaKernel(length_scale = 2.0,variance=1.0)(X,X)
+            X = SEKernel(length_scale = 2.0,variance=1.0)(X,X)
             print(X)
             print(type(X))
-            self.kernel_fn = SEMagmaKernel(length_scale=2.0, variance=1.0)
+            self.kernel_fn = SEKernel(length_scale=2.0, variance=1.0)
             K = self.kernel_fn(X, X) 
             # We initialize alphas (so basically that's the dual coefficients)
             n_samples = X.shape[0]

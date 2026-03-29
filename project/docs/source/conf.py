@@ -25,6 +25,7 @@ extensions = [
 nbsphinx_execute = 'never'
 nbsphinx_collapsible = True
 nbsphinx_allow_errors = True
+togglebutton_selector = ".toggle, .admonition.dropdown, details"
 togglebutton_hint = "Show the code"
 togglebutton_hint_hide = "Hide the code"
 

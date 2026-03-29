@@ -20,11 +20,9 @@ extensions = [
     'sphinx.ext.napoleon',   
     'sphinx.ext.viewcode',  
     'sphinx_togglebutton',
-    'nbsphinx'
+    'myst_nb'
 ]
-nbsphinx_execute = 'never'
-nbsphinx_collapsible = True
-nbsphinx_allow_errors = True
+nb_execution_mode = "off"
 togglebutton_selector = ".toggle, .admonition.dropdown, details"
 togglebutton_hint = "Show the code"
 togglebutton_hint_hide = "Hide the code"

@@ -25,6 +25,8 @@ extensions = [
 nbsphinx_execute = 'never'
 nbsphinx_collapsible = True
 nbsphinx_allow_errors = True
+togglebutton_hint = "Show the code"
+togglebutton_hint_hide = "Hide the code"
 
 templates_path = ['_templates']
 exclude_patterns = []

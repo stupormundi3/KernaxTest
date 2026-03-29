@@ -3,4 +3,4 @@ sphinx-rtd-theme
 numpy
 scikit-learn
 sphinx-togglebutton
-nbsphinx
+myst_nb

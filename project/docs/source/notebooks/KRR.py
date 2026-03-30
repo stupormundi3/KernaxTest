@@ -21,6 +21,8 @@ class KRR:
         # de gram et l'inverse, jpeux direct faire cholesky ici, à voir
         #Je calcule pas les coefficients duaux ici prcq ça aurait aucun sens étant donné que je peux normaliser
         # mes cibles si besoin
+        assert X.ndim == 2, "X must be 2D (number of samples, number of features)"
+        assert RidgeCoeff >= 0, f"RidgeCoeff must be non-negative, got {RidgeCoeff}"
         if Kernel is None:
             self.Kernel=Matern32Kernel(length_scale=1.0)   
         else:

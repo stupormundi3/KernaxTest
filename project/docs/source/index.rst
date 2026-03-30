@@ -10,11 +10,12 @@ Welcome to Kernax
    installation
    api_reference
    notebooks/GP
-   notebooks/Kernels
    notebooks/Visualization
-   notebooks/KRRExamples
-   notebooks/KRR1
    notebooks/SVM
-   visualisation
+   notebooks/Kernels
+   notebooks/SVMExamples
+   notebooks/KRR1
+   notebooks/KRRExamples
+
 
 

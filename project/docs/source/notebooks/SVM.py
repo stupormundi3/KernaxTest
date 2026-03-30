@@ -84,7 +84,6 @@ class SVM:
     
         #As the dual problem and primal don't have have the same parameters, i need to optimize in two different ways
         if(self.kernel_fn is not None):
-            self.kernel_fn = SEKernel(length_scale=2.0, variance=1.0)
             K = self.kernel_fn(X, X) 
             # We initialize alphas (so basically that's the dual coefficients)
             n_samples = X.shape[0]
@@ -113,9 +112,9 @@ class SVM:
             if len(SvIndices) > 0:
                 # for each support vector we need to calculate the bias
                 b_vals = []
-                for idx in SvIndices:
-                    prediction = jnp.sum(alpha[SvIndices] * Y[SvIndices] * K[SvIndices, idx])
-                    b_vals.append(Y[idx] - prediction)
+                for index in SvIndices:
+                    prediction = jnp.sum(alpha[SvIndices] * Y[SvIndices] * K[SvIndices, index])
+                    b_vals.append(Y[index] - prediction)
                 self.b = jnp.mean(jnp.array(b_vals))
             else:
                 self.b = 0
@@ -129,11 +128,11 @@ class SVM:
 
         c = self.C
 
-        # Creating ids from 0 to number_of_samples - 1
-        ids = jnp.arange(number_of_samples)
+        # Creating Set from 0 to number_of_samples - 1
+        Set = jnp.arange(number_of_samples)
         key = jax.random.key(0)
         # Taking values from the samples randomly
-        jax.random.permutation(key,ids)
+        jax.random.permutation(key,Set)
 
         # creating an array of zeros
         w = jnp.zeros(number_of_features)  
@@ -163,7 +162,7 @@ class SVM:
             
     
     def predict(self, X):
-        if(self.kernel is not None):
+        if(self.kernel_fn is not None):
             assert self.alpha is not None, "if there is no alphas then the model wasn't trained "
             assert self.X_train is not None, "no data points"
             

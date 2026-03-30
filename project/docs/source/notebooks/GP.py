@@ -9,6 +9,7 @@ from functools import partial
 @register_pytree_node_class
 class GP:
     def __init__(self, Kernel, Alpha=1e-10, NormalizeObs=False):
+        assert Alpha >= 0, "the noise can't be negative"
         self.Kernel = Kernel
         self.Alpha = Alpha
         self.NormalizeObs = NormalizeObs
@@ -40,6 +41,8 @@ class GP:
     @staticmethod
     #Marginal log likelihood that we will to maximize, to find the best hyperparameters values for our Kernels
     def marginal_log_likelihood(Kernel, X, Obs, Alpha):
+        assert X.ndim == 2, "X must be 2D (number of samples, number of features)"
+        assert Obs.ndim in (1,2), f"Obs must be 1D or 2D, got shape {Obs.shape}"
         n = X.shape[0]
         K = Kernel(X,X)                      
         K = K + Alpha * jnp.eye(n)            
@@ -51,7 +54,8 @@ class GP:
         return log_lik
 
     def fit(self, X, Obs, num_iters=1000, learning_rate=0.1, progress=False):
-      
+        assert X.ndim == 2, "X must be 2D (number of samples, number of features)"
+        assert Obs.ndim in (1,2), f"Obs must be 1D or 2D, got {Obs.shape}"
         X = jnp.asarray(X)
         Obs = jnp.asarray(Obs)
         if Obs.ndim == 1:
@@ -65,6 +69,7 @@ class GP:
             ObsSTD = jnp.std(Obs, axis=0)
             ObsSTD = jnp.where(ObsSTD == 0, 1.0,ObsSTD)
             Obs_norm = (Obs -ObsMean) /ObsSTD
+            assert jnp.all(ObsSTD > 0), "We can't have negative values of standard deviation"
         else:
            ObsMean = jnp.zeros(Obs.shape[1:])
            ObsSTD = jnp.ones_like(ObsMean)
@@ -113,6 +118,7 @@ class GP:
     @partial(jit, static_argnames=['Return_std', 'Return_cov'])
     def predict(self, X, Return_std=False, Return_cov=False):
      X = jnp.asarray(X)
+     assert X.ndim == 2, "X must be 2D"
 
      #Calculation of the diagonal(variance for each test random variable)
      Diag_fn = jax.vmap(lambda x: self.Kernel(x, x))

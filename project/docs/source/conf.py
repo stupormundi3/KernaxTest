@@ -26,7 +26,7 @@ nb_execution_mode = "off"
 togglebutton_selector = ".toggle, .admonition.dropdown, details"
 togglebutton_hint = "Show the code"
 togglebutton_hint_hide = "Hide the code"
-
+myst_enable_extensions = ["dollarmath", "amsmath"]
 templates_path = ['_templates']
 exclude_patterns = []
 

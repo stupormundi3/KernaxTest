@@ -10,3 +10,11 @@ Référence de l'API
    :members:
    :undoc-members:
    :show-inheritance:
+.. automodule:: notebooks.KRR
+   :members:
+   :undoc-members:
+   :show-inheritance:
+.. automodule:: notebooks.SVM
+   :members:
+   :undoc-members:
+   :show-inheritance:   

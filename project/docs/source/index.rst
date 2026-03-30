@@ -14,6 +14,7 @@ Welcome to Kernax
    notebooks/Visualization
    notebooks/KRRExamples
    notebooks/KRR1
+   notebooks/SVM
    visualisation
 
 

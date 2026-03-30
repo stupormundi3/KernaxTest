@@ -1,0 +1,398 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SVM implemented in JAX &mdash; Kernax 2026 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/togglebutton.css?v=9c3e77be" />
+      <link rel="stylesheet" type="text/css" href="../_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=fc6fd62b"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script>let toggleHintShow = 'Show the code';</script>
+      <script>let toggleHintHide = 'Hide the code';</script>
+      <script>let toggleOpenOnPrint = 'true';</script>
+      <script src="../_static/togglebutton.js?v=1ae7504c"></script>
+      <script>var togglebuttonSelector = '.toggle, .admonition.dropdown, details';</script>
+      <script>window.MathJax = {"options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Kernax Kernels" href="Kernels.html" />
+    <link rel="prev" title="Gaussian processes examples" href="Visualization.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Kernax
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contenu:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference.html">Référence de l’API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="GP.html">Gaussian Processes implemented in JAX</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Visualization.html">Gaussian processes examples</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">SVM implemented in JAX</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Kernels.html">Kernax Kernels</a></li>
+<li class="toctree-l1"><a class="reference internal" href="SVMExamples.html">SVM Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="SVMExamples.html#influence-of-the-length-scale">Influence of the length scale</a></li>
+<li class="toctree-l1"><a class="reference internal" href="KRR1.html">Kernel regression ridge implemented in JAX</a></li>
+<li class="toctree-l1"><a class="reference internal" href="KRRExamples.html">Kernel Ridge Regression examples</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Kernax</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">SVM implemented in JAX</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/notebooks/SVM.ipynb.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="svm-implemented-in-jax">
+<h1>SVM implemented in JAX<a class="headerlink" href="#svm-implemented-in-jax" title="Link to this heading"></a></h1>
+<p>In this notebook we will aim to clearly explain the impact of Kernels in Support Vector Machines implemented in JAX</p>
+<section id="introduction-to-support-vector-machines">
+<h2>Introduction to Support Vector Machines<a class="headerlink" href="#introduction-to-support-vector-machines" title="Link to this heading"></a></h2>
+<p>A support vector machine is a supervised learning model, that finds the optimal hyperplane separating two or more classes by maximizing the margin.</p>
+<p>Given a training set, a SVM decision function is defined as :
+<span class="math notranslate nohighlight">\( f(x) = w^T x + b \)</span></p>
+<p>And each point is classified by :
+<span class="math notranslate nohighlight">\( \hat{y} = sign(f(x)) \)</span></p>
+</section>
+<section id="class-definition">
+<h2>Class Definition<a class="headerlink" href="#class-definition" title="Link to this heading"></a></h2>
+<p>We have a SVM class that considers the important elements that will intervene in our differents concepts, such as the Kernel covariance matrix, the error term, the weights and the bias</p>
+<div class="cell tag_hide-input docutils container">
+<details class="admonition hide above-input">
+<summary aria-label="Toggle hidden content">
+<p class="collapsed admonition-title">Show code cell source</p>
+<p class="expanded admonition-title">Hide code cell source</p>
+</summary>
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">jax.numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">jnp</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">jax</span><span class="w"> </span><span class="kn">import</span> <span class="n">jit</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">functools</span><span class="w"> </span><span class="kn">import</span> <span class="n">partial</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">kernax</span><span class="w"> </span><span class="kn">import</span> <span class="n">LinearKernel</span><span class="p">,</span> <span class="n">SEKernel</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">jax</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">optax</span>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">C</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">kernel</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="c1"># C = error term</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">C</span> <span class="o">=</span> <span class="n">C</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">w</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">b</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">kernel</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">X_train</span> <span class="o">=</span> <span class="kc">None</span>  
+        <span class="bp">self</span><span class="o">.</span><span class="n">y_train</span> <span class="o">=</span> <span class="kc">None</span>  
+        <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">kernel_fn</span> <span class="o">=</span> <span class="n">kernel</span>
+</pre></div>
+</div>
+</div>
+</details>
+</div>
+</section>
+<section id="hinge-loss">
+<h2>Hinge loss<a class="headerlink" href="#hinge-loss" title="Link to this heading"></a></h2>
+<p>Basically the Hinge Loss function is the cost function for the primal case of the SVM.
+It’s defined by :
+<span class="math notranslate nohighlight">\(L(w, b) = \frac{1}{2}\|w\|^2 + C \cdot \frac{1}{n}\sum_{i=1}^{n} \max(0, 1 - y_i(w^T x_i + b)) \)</span></p>
+<ul class="simple">
+<li><p><span class="math notranslate nohighlight">\(w\)</span> corresponds to the weights</p></li>
+<li><p><span class="math notranslate nohighlight">\(C\)</span> is the regularization parameter that control the trade-off between the margin and potentiel errors of classification</p></li>
+</ul>
+<div class="cell tag_hide-input docutils container">
+<details class="admonition hide above-input">
+<summary aria-label="Toggle hidden content">
+<p class="collapsed admonition-title">Show code cell source</p>
+<p class="expanded admonition-title">Hide code cell source</p>
+</summary>
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Hinge Loss Function / Calculation</span>
+<span class="nd">@partial</span><span class="p">(</span><span class="n">jit</span><span class="p">,</span> <span class="n">static_argnums</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,))</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">hingeloss</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">w</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+    <span class="c1"># Regularizer term</span>
+     <span class="n">reg</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">w</span> <span class="o">*</span> <span class="n">w</span><span class="p">)</span>  
+    
+    
+    <span class="c1"># We calculate all the scores in one time, so we don&#39;t use a for loop</span>
+     <span class="n">scores</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">w</span><span class="p">)</span> <span class="o">+</span> <span class="n">b</span>
+     
+    <span class="c1"># hinge loss for all elements of our sample</span>
+     <span class="n">hinge_losses</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">y</span> <span class="o">*</span> <span class="n">scores</span><span class="p">)</span>
+    
+    <span class="c1"># mean of all elements of our sample</span>
+     <span class="n">avg_hinge</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">hinge_losses</span><span class="p">)</span>
+    
+    <span class="c1"># total loss</span>
+     <span class="n">total_loss</span> <span class="o">=</span> <span class="n">reg</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">C</span> <span class="o">*</span> <span class="n">avg_hinge</span>
+    
+     <span class="k">return</span> <span class="n">total_loss</span>
+</pre></div>
+</div>
+</div>
+</details>
+</div>
+</section>
+<section id="dual-loss">
+<h2>Dual Loss<a class="headerlink" href="#dual-loss" title="Link to this heading"></a></h2>
+<p>Basically it’s just an optimization of the hinge loss, for the coefficients <span class="math notranslate nohighlight">\(a\)</span>
+<span class="math notranslate nohighlight">\(\mathcal{L}(\alpha) = \frac{1}{2}\sum_{i,j} \alpha_i \alpha_j y_i y_j K(x_i, x_j) - \sum_i \alpha_i + C \sum_i \max(0, \alpha_i - C)^2 + C \sum_i \max(0, -\alpha_i)^2\)</span></p>
+<p>The constraint in the dual loss function is that the coefficients <span class="math notranslate nohighlight">\(a\)</span> should always be inferior to the regularization parameter</p>
+<div class="cell tag_hide-input docutils container">
+<details class="admonition hide above-input">
+<summary aria-label="Toggle hidden content">
+<p class="collapsed admonition-title">Show code cell source</p>
+<p class="expanded admonition-title">Hide code cell source</p>
+</summary>
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@partial</span><span class="p">(</span><span class="n">jit</span><span class="p">,</span> <span class="n">static_argnums</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,))</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">dual_loss</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">K</span><span class="p">):</span>
+        
+        <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+        
+        <span class="c1"># quadratic function for dual problem</span>
+        <span class="n">y_matrix</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">outer</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+        <span class="n">quad_term</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">jnp</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">y_matrix</span> <span class="o">*</span> <span class="n">K</span><span class="p">,</span> <span class="n">alpha</span><span class="p">))</span>
+        
+        
+        <span class="n">linear_term</span> <span class="o">=</span> <span class="o">-</span><span class="n">jnp</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">alpha</span><span class="p">)</span>
+        
+        
+        <span class="n">penalty</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">C</span> <span class="o">*</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">jnp</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">alpha</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">C</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">+</span> \
+                  <span class="bp">self</span><span class="o">.</span><span class="n">C</span> <span class="o">*</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">jnp</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="n">alpha</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+        
+        <span class="k">return</span> <span class="n">quad_term</span> <span class="o">+</span> <span class="n">linear_term</span> <span class="o">+</span> <span class="n">penalty</span>
+</pre></div>
+</div>
+</div>
+</details>
+</div>
+</section>
+<section id="fit-function">
+<h2>Fit function<a class="headerlink" href="#fit-function" title="Link to this heading"></a></h2>
+<p>The fit function goal will be to train our SVM using Adam.
+Our fit function considers both the primal and the dual cases, in the primal case we will directly minimize the hinge loss based on the weights and biases.
+In the dual case we will focus on optimizing the lagrange multipliers(the <span class="math notranslate nohighlight">\(a\)</span> coefficients) given some constraints.</p>
+<div class="cell tag_hide-input docutils container">
+<details class="admonition hide above-input">
+<summary aria-label="Toggle hidden content">
+<p class="collapsed admonition-title">Show code cell source</p>
+<p class="expanded admonition-title">Hide code cell source</p>
+</summary>
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">fit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">,</span> <span class="n">Y</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">learning_rate</span><span class="o">=</span><span class="mf">0.001</span><span class="p">,</span> <span class="n">epochs</span><span class="o">=</span><span class="mi">1000</span><span class="p">):</span>
+        <span class="c1"># The number of features in X</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">X_train</span> <span class="o">=</span> <span class="n">X</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">y_train</span> <span class="o">=</span> <span class="n">Y</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">X</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">jnp</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+        <span class="n">Y</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">Y</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">jnp</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">X</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;X should be in two dimensions&quot;</span>
+        <span class="k">assert</span> <span class="n">Y</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;Y should be in one dimension&quot;</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">X</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">Y</span><span class="p">),</span> <span class="s2">&quot;X and Y should have the same length&quot;</span>
+    
+        <span class="c1">#As the dual problem and primal don&#39;t have have the same parameters, i need to optimize in two different ways</span>
+        <span class="k">if</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">kernel_fn</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">kernel_fn</span> <span class="o">=</span> <span class="n">SEKernel</span><span class="p">(</span><span class="n">length_scale</span><span class="o">=</span><span class="mf">2.0</span><span class="p">,</span> <span class="n">variance</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
+            <span class="n">K</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">kernel_fn</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">X</span><span class="p">)</span> 
+            <span class="c1"># We initialize alphas (so basically that&#39;s the dual coefficients)</span>
+            <span class="n">n_samples</span> <span class="o">=</span> <span class="n">X</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">alpha</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n_samples</span><span class="p">)</span>
+
+            <span class="c1"># We want to optimize our alphas</span>
+
+            <span class="n">optimizer</span> <span class="o">=</span> <span class="n">optax</span><span class="o">.</span><span class="n">adam</span><span class="p">(</span><span class="n">learning_rate</span><span class="o">=</span><span class="n">learning_rate</span><span class="p">)</span>
+            <span class="n">opt_state</span> <span class="o">=</span> <span class="n">optimizer</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="n">alpha</span><span class="p">)</span>
+            <span class="n">losses</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">def</span><span class="w"> </span><span class="nf">body</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">state</span><span class="p">):</span>
+               <span class="n">alpha</span><span class="p">,</span> <span class="n">opt_state</span> <span class="o">=</span> <span class="n">state</span>
+               <span class="n">loss</span><span class="p">,</span> <span class="n">grad_alpha</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">value_and_grad</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dual_loss</span><span class="p">)(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">X</span><span class="p">,</span> <span class="n">Y</span><span class="p">,</span> <span class="n">K</span><span class="p">)</span>
+               <span class="n">updates</span><span class="p">,</span> <span class="n">opt_state</span> <span class="o">=</span> <span class="n">optimizer</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">grad_alpha</span><span class="p">,</span> <span class="n">opt_state</span><span class="p">,</span> <span class="n">alpha</span><span class="p">)</span>
+               <span class="n">alpha</span> <span class="o">=</span> <span class="n">optax</span><span class="o">.</span><span class="n">apply_updates</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">updates</span><span class="p">)</span>
+               <span class="n">alpha</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">C</span><span class="p">)</span>
+               <span class="k">return</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">opt_state</span>
+
+            <span class="n">alpha</span><span class="p">,</span> <span class="n">opt_state</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">lax</span><span class="o">.</span><span class="n">fori_loop</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">epochs</span><span class="p">,</span> <span class="n">body</span><span class="p">,</span> <span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">opt_state</span><span class="p">))</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span> <span class="o">=</span> <span class="n">alpha</span>    
+            <span class="c1"># When we are in the dual problem there&#39;s no weight</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">w</span> <span class="o">=</span> <span class="kc">None</span>
+
+            <span class="n">SvIndices</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">alpha</span> <span class="o">&gt;</span> <span class="mf">1e-5</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>  <span class="c1"># support vectors</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">SvIndices</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="c1"># for each support vector we need to calculate the bias</span>
+                <span class="n">b_vals</span> <span class="o">=</span> <span class="p">[]</span>
+                <span class="k">for</span> <span class="n">index</span> <span class="ow">in</span> <span class="n">SvIndices</span><span class="p">:</span>
+                    <span class="n">prediction</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">alpha</span><span class="p">[</span><span class="n">SvIndices</span><span class="p">]</span> <span class="o">*</span> <span class="n">Y</span><span class="p">[</span><span class="n">SvIndices</span><span class="p">]</span> <span class="o">*</span> <span class="n">K</span><span class="p">[</span><span class="n">SvIndices</span><span class="p">,</span> <span class="n">index</span><span class="p">])</span>
+                    <span class="n">b_vals</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Y</span><span class="p">[</span><span class="n">index</span><span class="p">]</span> <span class="o">-</span> <span class="n">prediction</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">b</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">jnp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">b_vals</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">b</span> <span class="o">=</span> <span class="mi">0</span>
+            
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">b</span><span class="p">,</span> <span class="n">losses</span>
+
+        <span class="n">number_of_features</span> <span class="o">=</span> <span class="n">X</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="c1"># The number of Samples in X</span>
+        <span class="n">number_of_samples</span> <span class="o">=</span> <span class="n">X</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="n">c</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">C</span>
+
+
+        <span class="n">Set</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">number_of_samples</span><span class="p">)</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">key</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        <span class="c1"># Taking values from the samples randomly</span>
+        <span class="n">jax</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">permutation</span><span class="p">(</span><span class="n">key</span><span class="p">,</span><span class="n">Set</span><span class="p">)</span>
+
+        <span class="c1"># creating an array of zeros</span>
+        <span class="n">w</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">number_of_features</span><span class="p">)</span>  
+        <span class="n">b</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="n">losses</span> <span class="o">=</span> <span class="p">[]</span>
+
+
+        <span class="c1"># The paramaters that we&#39;re going to use for optax</span>
+        <span class="n">params</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;w&#39;</span><span class="p">:</span> <span class="n">w</span><span class="p">,</span> <span class="s1">&#39;b&#39;</span><span class="p">:</span> <span class="n">b</span><span class="p">}</span>
+        <span class="c1"># The optimizer that we will use to update our w and b and find the best ones.</span>
+        <span class="n">optimizer</span> <span class="o">=</span> <span class="n">optax</span><span class="o">.</span><span class="n">adam</span><span class="p">(</span><span class="n">learning_rate</span><span class="o">=</span><span class="n">learning_rate</span><span class="p">)</span>
+
+        <span class="n">opt_state</span> <span class="o">=</span> <span class="n">optimizer</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="n">params</span><span class="p">)</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">body</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">state</span><span class="p">):</span>
+            <span class="n">params</span><span class="p">,</span> <span class="n">opt_state</span> <span class="o">=</span> <span class="n">state</span>
+            <span class="n">loss</span><span class="p">,</span> <span class="p">(</span><span class="n">grad_w</span><span class="p">,</span> <span class="n">grad_b</span><span class="p">)</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">value_and_grad</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">hingeloss</span><span class="p">,</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">))(</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;w&quot;</span><span class="p">],</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;b&quot;</span><span class="p">],</span> <span class="n">X</span><span class="p">,</span> <span class="n">Y</span><span class="p">)</span>
+            <span class="n">grads</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;w&#39;</span><span class="p">:</span> <span class="n">grad_w</span><span class="p">,</span> <span class="s1">&#39;b&#39;</span><span class="p">:</span> <span class="n">grad_b</span><span class="p">}</span>
+            <span class="n">updates</span><span class="p">,</span> <span class="n">opt_state</span> <span class="o">=</span> <span class="n">optimizer</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">grads</span><span class="p">,</span> <span class="n">opt_state</span><span class="p">,</span> <span class="n">params</span><span class="p">)</span>
+            <span class="n">params</span> <span class="o">=</span> <span class="n">optax</span><span class="o">.</span><span class="n">apply_updates</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">updates</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">params</span><span class="p">,</span> <span class="n">opt_state</span>
+
+        <span class="n">params</span><span class="p">,</span> <span class="n">opt_state</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">lax</span><span class="o">.</span><span class="n">fori_loop</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">epochs</span><span class="p">,</span> <span class="n">body</span><span class="p">,</span> <span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">opt_state</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">w</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;w&quot;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">b</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;b&quot;</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;w&quot;</span><span class="p">],</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;b&quot;</span><span class="p">],</span> <span class="n">losses</span>
+</pre></div>
+</div>
+</div>
+</details>
+</div>
+</section>
+<section id="predict-function">
+<h2>Predict function<a class="headerlink" href="#predict-function" title="Link to this heading"></a></h2>
+<p>The predict function simply apply the decision computed by fit, depending on if we’re using a Kernel or not, the formula used won’t be the same.</p>
+<p>Without a Kernel : <span class="math notranslate nohighlight">\(\hat{y} = \text{sign}(w^T x + b)\)</span></p>
+<ul class="simple">
+<li><p><span class="math notranslate nohighlight">\(w\)</span> corresponds to the weights</p></li>
+<li><p><span class="math notranslate nohighlight">\(b\)</span> corresponds to the bias</p></li>
+</ul>
+<p>With a Kernel : <span class="math notranslate nohighlight">\(\hat{y} = \text{sign}\left(\sum_{i \in SV} \alpha_i y_i K(x_i, x) + b\right)\)</span></p>
+<ul class="simple">
+<li><p><span class="math notranslate nohighlight">\(K\)</span> corresponds to the Gram Matrix</p></li>
+<li><p><span class="math notranslate nohighlight">\(a\)</span> corresponds to the Lagrange Multipliers</p></li>
+<li><p><span class="math notranslate nohighlight">\(b\)</span> corresponds to the bias</p></li>
+</ul>
+<div class="cell tag_hide-input docutils container">
+<details class="admonition hide above-input">
+<summary aria-label="Toggle hidden content">
+<p class="collapsed admonition-title">Show code cell source</p>
+<p class="expanded admonition-title">Hide code cell source</p>
+</summary>
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">predict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">):</span>
+        <span class="k">if</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">kernel</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">):</span>
+            <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;if there is no alphas then the model wasn&#39;t trained &quot;</span>
+            <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">X_train</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;no data points&quot;</span>
+            
+            <span class="c1"># Kernel matrix between X and the training points</span>
+            <span class="n">K_test</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">kernel_fn</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">X_train</span><span class="p">)</span>
+            
+            <span class="c1"># decision function of dual problems</span>
+            <span class="n">decisions</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">K_test</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">y_train</span><span class="p">)</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">b</span>
+            <span class="k">return</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sign</span><span class="p">(</span><span class="n">decisions</span><span class="p">)</span>
+
+            
+
+        <span class="n">prediction</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">w</span><span class="p">)</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">b</span>
+        <span class="k">return</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sign</span><span class="p">(</span><span class="n">prediction</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</details>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="Visualization.html" class="btn btn-neutral float-left" title="Gaussian processes examples" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="Kernels.html" class="btn btn-neutral float-right" title="Kernax Kernels" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Ziad Iziz.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

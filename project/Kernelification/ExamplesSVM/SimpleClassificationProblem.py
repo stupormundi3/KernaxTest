@@ -16,7 +16,7 @@ from Kernax import LinearKernel, RBFKernel
 import time
 
 # Still need to convert in jax
-# Suppose there is a circle with center at (0, 0) and radius 1.2.
+# We Suppose there is a circle with center at (0, 0) and radius 1.2.
 # All the points within the circle are labeled 1.
 # All the points outside the circle are labeled 0.
 nSamples = 100

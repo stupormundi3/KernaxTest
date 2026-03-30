@@ -27,7 +27,7 @@ togglebutton_selector = ".toggle, .admonition.dropdown, details"
 togglebutton_hint = "Show the code"
 togglebutton_hint_hide = "Hide the code"
 myst_enable_extensions = ["dollarmath", "amsmath"]
-html_extra_path = ['notebooks/images']
+html_extra_path = ['source/notebooks/images']
 templates_path = ['_templates']
 exclude_patterns = []
 

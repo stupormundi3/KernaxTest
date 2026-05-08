@@ -22,8 +22,10 @@
 
 \chapter{Contexte et objectifs techniques}
 \section{Pourquoi JAX ?}
+Le choix de JAX plutot que pytorch a été motivé par l'optimisation des paramètres des kernels.
+JAX permet d'appliquer value_and_grad direct sur le log vraisemblance, ce qui nous simplifie l'implem.
 \section{Limites connues}
-
+Mon SVM n'est pas instancié comme pytree, erreur, ce qui veut dire qu'on limite les possibilités de jit.
 \chapter{Environnement de développement}
 \section{Stack}
 \section{Générer la documentation}

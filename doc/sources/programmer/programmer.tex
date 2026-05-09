@@ -23,28 +23,38 @@
 \chapter{Contexte et objectifs techniques}
 \section{Pourquoi JAX ?}
 Le choix de JAX plutot que pytorch a été motivé par l'optimisation des paramètres des kernels.
-JAX permet d'appliquer value_and_grad direct sur le log vraisemblance, ce qui nous simplifie l'implem.
+JAX permet d'appliquer valueandgrad direct sur le log vraisemblance, ce qui nous simplifie l'implem.
 \section{Limites connues}
 Mon SVM n'est pas instancié comme pytree, erreur, ce qui veut dire qu'on limite les possibilités de jit.
 \chapter{Environnement de développement}
 \section{Stack}
+Nous utilisons principalement Python 3.10+, jax et optax. Pour la doc nous utilisons MystNB avec sphinx.
+La configuration Sphinx se trouve dans le fichier conf.py.
 \section{Générer la documentation}
-
+La documentation est généré avec sphinx et hebergé avec RTD. Pour la générer localement, on place les fichiers
+dans source puis on "make html".
+Les notebooks sont integrés à la documentation grace à MystNB.
+Un point intéressant est que le contenu des notebooks est pré-calculé.
+Ce qui fait qu'à chaque build on ne doit pas les ré-executer.
 \chapter{Architecture globale}
-\section{Vue d'ensemble}
-\section{Le pattern pytree}
 
+\section{Vue d'ensemble}
+Le projet va tourner autour des KRR, GP et SVM qui utilisent la même interface de Kernels.
+
+Un kernel va être un objet qui va pouvoir être appelé et qui va return une matrice de GRAM.
+\section{Le pattern pytree}
+JAX va exiger que les self des méthodes jit compiled soient des pytrees.
+On a donc que les KRR et GP implémentent tree\_flatten() et treeun\_flatten() et sont enregistrés avec
+@register\_pytree\_node\_class, donc la logique est la suivante : les attributs qui évoluent pendant l'entrainement
+vont dans children, les constantes comme le bruit et le ridge\_coeff vont dans aux\_data.
+Le SVM lui ne suit pas ce pattern, on utilise plutot static\_argnums.
 \chapter{Description des modules}
 \section{GP.py}
+
 \section{SVM.py}
+Implementation simple d'un DUAL et primal probléme
 \section{KRR.py}
+Implémentation du KRR, qui est assez similaire au GP mais sans bruit
 
-\chapter{Référence de l'API}
-
-\chapter{Comportement au runtime}
-\section{Flux de fit()}
-\section{Flux de predict()}
-
-\chapter{Pistes d'amélioration}
 
 \end{document}
